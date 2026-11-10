@@ -1,0 +1,6 @@
+{
+  "name": "Home Hub - Job & Next Visit Reminder",
+  "description": "Smart job scheduling, reminder and visit tracking system for Home Hub. Manage client bookings, track next visit dates, and get timely visit reminders.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
