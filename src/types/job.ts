@@ -32,3 +32,13 @@ export interface Job {
 export type ViewTab = 'dashboard' | 'all-jobs' | 'calendar';
 
 export type DateFilterType = 'all' | 'today' | 'tomorrow' | 'this-week' | 'overdue' | 'completed';
+
+export interface Technician {
+  id: string;
+  name: string;
+  mobile: string;
+  specialty?: string;
+  email?: string;
+  notes?: string;
+  createdAt?: string;
+}

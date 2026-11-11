@@ -4,12 +4,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Job, ViewTab } from './types/job';
+import { Job, ViewTab, Technician } from './types/job';
 import {
   loadJobs,
   saveJobs,
   loadSettings,
   saveSettings,
+  loadTechnicians,
+  saveTechnicians,
   getInitialSeedJobs,
   AppSettings,
 } from './utils/storage';
@@ -21,13 +23,16 @@ import { JobModal } from './components/JobModal';
 import { QuickRescheduleModal } from './components/QuickRescheduleModal';
 import { ReminderDrawer } from './components/ReminderDrawer';
 import { BackupModal } from './components/BackupModal';
+import { TechniciansModal } from './components/TechniciansModal';
 import { isJobToday, isJobOverdue } from './utils/dateUtils';
 import { playChime } from './utils/audio';
 import { translations } from './utils/translations';
+import { Plus, Wrench } from 'lucide-react';
 
 export default function App() {
   const [jobs, setJobs] = useState<Job[]>(() => loadJobs());
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
+  const [technicians, setTechnicians] = useState<Technician[]>(() => loadTechnicians());
   const [currentTab, setCurrentTab] = useState<ViewTab>('dashboard');
 
   // Modals state
@@ -36,6 +41,7 @@ export default function App() {
   const [reschedulingJob, setReschedulingJob] = useState<Job | null>(null);
   const [isReminderDrawerOpen, setIsReminderDrawerOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isTechniciansModalOpen, setIsTechniciansModalOpen] = useState(false);
 
   // Sync jobs to localStorage
   useEffect(() => {
@@ -46,6 +52,11 @@ export default function App() {
   useEffect(() => {
     saveSettings(settings);
   }, [settings]);
+
+  // Sync technicians to localStorage
+  useEffect(() => {
+    saveTechnicians(technicians);
+  }, [technicians]);
 
   // Calculate urgent reminders (today + overdue)
   const urgentCount = jobs.filter(
@@ -75,6 +86,7 @@ export default function App() {
             ? {
                 ...j,
                 ...jobData,
+                currency: '£',
                 updatedAt: now,
               }
             : j
@@ -85,6 +97,7 @@ export default function App() {
       // Create new
       const newJob: Job = {
         ...jobData,
+        currency: '£',
         id: `job-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         createdAt: now,
         updatedAt: now,
@@ -92,6 +105,29 @@ export default function App() {
       setJobs((prev) => [newJob, ...prev]);
       if (settings.soundEnabled) playChime('reminder');
     }
+  };
+
+  // Technician management handlers
+  const handleAddTechnician = (techData: Omit<Technician, 'id' | 'createdAt'>) => {
+    const newTech: Technician = {
+      ...techData,
+      id: `tech-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      createdAt: new Date().toISOString(),
+    };
+    setTechnicians((prev) => [...prev, newTech]);
+    if (settings.soundEnabled) playChime('success');
+  };
+
+  const handleUpdateTechnician = (id: string, techData: Partial<Technician>) => {
+    setTechnicians((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...techData } : t))
+    );
+    if (settings.soundEnabled) playChime('success');
+  };
+
+  const handleDeleteTechnician = (id: string) => {
+    setTechnicians((prev) => prev.filter((t) => t.id !== id));
+    if (settings.soundEnabled) playChime('alert');
   };
 
   // Open modal for editing
@@ -156,13 +192,14 @@ export default function App() {
 
   // Import / restore jobs handler
   const handleRestoreJobs = (importedJobs: Job[], mode: 'replace' | 'merge') => {
+    const normalized = importedJobs.map((j) => ({ ...j, currency: '£' }));
     if (mode === 'replace') {
-      setJobs(importedJobs);
+      setJobs(normalized);
     } else {
       setJobs((prev) => {
         const map = new Map<string, Job>();
         prev.forEach((j) => map.set(j.id, j));
-        importedJobs.forEach((j) => map.set(j.id, j));
+        normalized.forEach((j) => map.set(j.id, j));
         return Array.from(map.values());
       });
     }
@@ -177,12 +214,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f8faf9] text-slate-900 selection:bg-emerald-100 selection:text-emerald-900">
-      {/* Header following Frontend Design Constitution Top Bar contract */}
+      {/* Header */}
       <Header
         currentTab={currentTab}
         onTabChange={setCurrentTab}
         onOpenNewJobModal={handleOpenNewJobModal}
         onOpenBackupModal={() => setIsBackupModalOpen(true)}
+        onOpenTechniciansModal={() => setIsTechniciansModalOpen(true)}
         reminderCount={urgentCount}
         onToggleReminderDrawer={() => setIsReminderDrawerOpen(!isReminderDrawerOpen)}
         soundEnabled={settings.soundEnabled}
@@ -190,7 +228,41 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
+        {/* Hero Banner with Prominent Centered New Job Booking CTA beneath header */}
+        <div className="mb-6 sm:mb-8 rounded-2xl bg-gradient-to-r from-[#14532d] via-[#166534] to-[#14532d] p-5 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-5">
+          <div className="space-y-2 text-center md:text-left">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/10 text-emerald-100 text-xs font-medium backdrop-blur-xs">
+              <span>Home Hub Admin</span>
+              <span>•</span>
+              <span>GBP (£) Active</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight">
+              Service Visit & Reminder Hub
+            </h1>
+            <p className="text-xs sm:text-sm text-emerald-100/90 max-w-xl">
+              Easily manage client bookings, track next visit dates, assign field technicians, and receive instant alerts for today's jobs.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full md:w-auto justify-center">
+            <button
+              onClick={handleOpenNewJobModal}
+              className="flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-bold text-[#14532d] bg-white hover:bg-emerald-50 active:bg-emerald-100 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 whitespace-nowrap w-full sm:w-auto"
+            >
+              <Plus className="w-5 h-5 text-[#14532d]" />
+              <span>+ New Job Booking</span>
+            </button>
+            <button
+              onClick={() => setIsTechniciansModalOpen(true)}
+              className="flex items-center justify-center gap-2 px-4 py-3.5 text-xs font-semibold text-white bg-white/15 hover:bg-white/25 border border-white/20 rounded-xl backdrop-blur-xs transition-colors whitespace-nowrap w-full sm:w-auto"
+            >
+              <Wrench className="w-4 h-4" />
+              <span>Technicians Roster</span>
+            </button>
+          </div>
+        </div>
+
         {currentTab === 'dashboard' && (
           <DashboardView
             jobs={jobs}
@@ -213,6 +285,7 @@ export default function App() {
             onDelete={handleDeleteJob}
             onOpenNewJobModal={handleOpenNewJobModal}
             onOpenBackupModal={() => setIsBackupModalOpen(true)}
+            onOpenTechniciansModal={() => setIsTechniciansModalOpen(true)}
             onImportJobs={(imported) => handleRestoreJobs(imported, 'replace')}
           />
         )}
@@ -238,6 +311,12 @@ export default function App() {
         }}
         onSave={handleSaveJob}
         initialJob={editingJob}
+        technicians={technicians}
+        onQuickAddTechnician={handleAddTechnician}
+        onOpenTechniciansModal={() => {
+          setIsJobModalOpen(false);
+          setIsTechniciansModalOpen(true);
+        }}
       />
 
       <QuickRescheduleModal
@@ -264,6 +343,16 @@ export default function App() {
         onResetToDemo={handleResetToDemo}
       />
 
+      <TechniciansModal
+        isOpen={isTechniciansModalOpen}
+        onClose={() => setIsTechniciansModalOpen(false)}
+        technicians={technicians}
+        jobs={jobs}
+        onAddTechnician={handleAddTechnician}
+        onUpdateTechnician={handleUpdateTechnician}
+        onDeleteTechnician={handleDeleteTechnician}
+      />
+
       {/* Quiet Footer */}
       <footer className="border-t border-slate-200 bg-white py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
@@ -273,6 +362,12 @@ export default function App() {
             <span>Job Scheduling & Next Visit Reminder Portal</span>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsTechniciansModalOpen(true)}
+              className="text-[#14532d] hover:underline font-semibold"
+            >
+              Manage Technicians
+            </button>
             <button
               onClick={() => setIsBackupModalOpen(true)}
               className="text-[#14532d] hover:underline font-semibold"

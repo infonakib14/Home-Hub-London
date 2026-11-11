@@ -43,6 +43,7 @@ interface JobsTableViewProps {
   onDelete: (jobId: string) => void;
   onOpenNewJobModal: () => void;
   onOpenBackupModal: () => void;
+  onOpenTechniciansModal?: () => void;
   onImportJobs: (importedJobs: Job[]) => void;
 }
 
@@ -54,6 +55,7 @@ export const JobsTableView: React.FC<JobsTableViewProps> = ({
   onDelete,
   onOpenNewJobModal,
   onOpenBackupModal,
+  onOpenTechniciansModal,
   onImportJobs,
 }) => {
   const t = translations.en;
@@ -160,6 +162,18 @@ export const JobsTableView: React.FC<JobsTableViewProps> = ({
                 <LayoutGrid className="w-4 h-4" />
               </button>
             </div>
+
+            {/* Technicians Manager Modal Trigger */}
+            {onOpenTechniciansModal && (
+              <button
+                onClick={onOpenTechniciansModal}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 border border-slate-200 rounded-lg transition-colors whitespace-nowrap"
+                title="Manage technicians and field staff"
+              >
+                <Wrench className="w-3.5 h-3.5 text-[#14532d]" />
+                <span>Technicians</span>
+              </button>
+            )}
 
             {/* Dedicated Data Backup & Restore Modal Trigger */}
             <button
